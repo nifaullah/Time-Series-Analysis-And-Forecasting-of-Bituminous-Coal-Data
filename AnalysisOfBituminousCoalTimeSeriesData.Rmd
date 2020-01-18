@@ -1,0 +1,168 @@
+---
+title: "Analyzing Bituminous Coal Time Series Data"
+author: "Mohammed Nifaullah Sailappai"
+date: "1/17/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# 1. Data
+The data is monthly bituminous coal production in the US from January 1952 through December 1959, a total of 96 observations.
+
+# 2. Libraries
+
+```{r libraries}
+library(forecast)
+library(lmtest)
+```
+
+# 3. Data Reading
+```{r data_reading}
+
+ts1 = c(47730,46704,41535,41319,36962,32558,31995,32993,44834,29883,39611,
+        40099,38051,36927,37272,39457,38097,40226,43589,39088,39409,37226,
+        34421,34975,32710,31885,32106,30029,29501,31620,34205,32153,32764,
+        33230,35636,35550,34529,37498,37229,36021,38281,36676,44541,40850,
+        38404,37575,41476,42267,43062,45036,43769,42298,44412,40498,37830,
+        42294,38330,43554,42579,36911,42541,42430,43465,44468,43597,40774,
+        42573,41635,39030,41572,37027,34732,36817,34295,33218,32034,31417,
+        35719,30001,33096,35196,36550,33463,37195,34748,36461,35754,36943,
+        35854,37912,30095,28931,31020,31746,34613,37901)
+
+myts <- ts(ts1, start=c(1952, 1), end=c(1959, 12), frequency=12)
+```
+
+# 4. Data Visualization & Visual Identification Of Model Using ACF & PACF
+
+The exponential of decay of ACF and the cut-off of PACF at lag 2 suggests that the time series may well be following AR (2) process, but in order to concretely prove that the data is indeed following  a AR(2) process we need to run some test on the fit of the model.
+
+
+## {.tabset .tabset-fade .tabset-pills}
+
+### Time Series Plot
+```{r plot, echo=FALSE}
+
+plot(myts)
+
+```
+
+### ACF
+```{r acf, echo=FALSE}
+
+
+acf(ts1,ylim=c(-1,1), lag.max = 20)
+
+```
+
+### PACF
+```{r pacf, echo=FALSE}
+
+
+pacf(ts1,ylim=c(-1,1), lag.max = 20)
+
+```
+
+# 5. Model Diagnostics
+## Fitting the model
+Fitting the time series to AR(2) model.
+```{r ModelFit}
+fit200 = arima(myts,order =  c(2,0,0))
+fit200
+```
+
+## Parameter Estimation & Coef Test
+Let’s first run a Hypothesis test to check if the parameter estimates are significant
+
+<b>Null Hypothesis:</b> Φ1-hat = 0, Φ2-hat =0 <br/>
+<b>Alternate Hypothesis:</b> Φ1-hat  != 0, Φ2-hat  !=0 <br/>
+
+Thus from below test we can reject the default null hypotheses that estimated parameters are zero. 
+Parameter Φ1, Φ2, µ are estimated as Φ1-hat = 0.484, Φ2-hat = 0.3224 and µ= 37981.397 respectively for the fitted AR (2) Model.
+
+```{r coeftest}
+coeftest(fit200)
+```
+
+## AIC & BIC Tests
+AIC and BIC Tests are ran on the fitted AR (2) model and compared with other models such as ARMA (2, 2) and ARMA (1, 1). It turns out AR (2) performs better than ARMA (1, 1) and ARMA (2, 2), suggesting AR(2) to be an adequate fit of the data in comparison with the other 2 models.
+
+```{r fitOtherModels}
+
+fit202 = arima(myts,order =  c(2,0,2))
+fit101 = arima(myts,order =  c(1,0,1))
+
+```
+
+
+## {.tabset .tabset-fade .tabset-pills}
+
+### AIC
+```{r aic}
+AIC(fit200)
+AIC(fit202)
+AIC(fit101)
+```
+
+### BIC
+```{r bic}
+BIC(fit200)
+BIC(fit202)
+BIC(fit101)
+```
+
+
+## Residual Analysis
+Fitted Residual's ACF reveals much about the lack of fit. If the model fits the data well, then residual will behave like white noises i.e. it’d have zero correlation. Now let’s do a hypothesis test to find out if AR2 fits the data adequately.
+
+<b>Null Hypothesis:</b> ρk(ât)=0 <br/>
+<b>Alternate Hypothesis:</b> ρk(ât)!=0
+
+
+
+
+## {.tabset .tabset-fade .tabset-pills}
+
+From the below ACF of the residual and by the Bartlett Theorem we can say that we failed to reject the null hypothesis ρk(ât)=0. Because of the inaccuracies involved with this method, we need to perform one more test i.e. the Box-Jung Test to concretely claim that AR (2) Model adequately fits the time series data.
+
+### Residual
+```{r residual, echo=FALSE}
+plot(fit200$residuals)
+```
+
+### ACF
+```{r acf_res, echo=FALSE}
+acf(fit200$residuals,ylim=c(-1,1))
+```
+
+#
+## Box-Ljung Test
+A p-value of 0.71 suggests that model is indeed significant, thus we again fail to reject the null hypothesis ρk(ât)=0.
+
+```{r box}
+Box.test(fit200$residuals, lag = 10, type = "Ljung-Box", fitdf = 2)
+```
+
+
+# 6.	Final Model
+After substituting for all the parameters, the final AR(2) model would be
+
+(1-0.484B-(0.32242)B^2) (Zt - 37981.397) = at	
+Where at ∼N (0, 9403405).
+
+# 7. Forecast
+Forecasting for the next 24 month
+```{r forecast}
+forecast(fit200,h=24)
+plot(forecast(fit200,h=24))
+```
+
+# 8. Notations
+Zt - Observation at current time <br/>
+at - white noise at current time <br/>
+B - Backward Shift Operator <br/>
+ρk - Auto-Correlation <br/>
+Φ1 -  1st estimated Parameter in the AR(2) Model <br/> 
+Φ2 - 2nd estimated parameter in the AR(2) Model <br/>
