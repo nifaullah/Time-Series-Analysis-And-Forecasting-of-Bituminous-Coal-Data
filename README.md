@@ -4,7 +4,7 @@ Academic Project - Using the bituminous coal data to find the appropriate ARIMA 
 
 Data: The data is monthly bituminous coal production in the US from January 1952 through December 1959, a total of 96 observations.
 
-Goal: To successfully model the time series using ARIMA modeling procedure.
+Goal: To successfully model the time series using ARMA modeling procedure.
 
 Language: R
 
